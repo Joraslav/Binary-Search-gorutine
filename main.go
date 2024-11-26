@@ -5,22 +5,15 @@ import (
 	"sync"
 )
 
-type Result struct {
-	Index int
-	Value int
-}
-
-func binarySearch(arr []int, target int, index int, results chan<- Result, wg *sync.WaitGroup) {
-	defer wg.Done()
-
+// binarySearch выполняет бинарный поиск элемента в отсортированном массиве
+func binarySearch(arr []int, target int) int {
 	left, right := 0, len(arr)-1
 
 	for left <= right {
 		mid := left + (right-left)/2
 
 		if arr[mid] == target {
-			results <- Result{Index: index, Value: mid}
-			return
+			return mid
 		}
 
 		if arr[mid] < target {
@@ -30,31 +23,28 @@ func binarySearch(arr []int, target int, index int, results chan<- Result, wg *s
 		}
 	}
 
-	results <- Result{Index: index, Value: -1}
+	return -1 // Элемент не найден
 }
 
 func main() {
 	arr := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
 	target := []int{7, 3, 11}
 
-	results := make(chan Result, len(target))
+	results := make([]int, len(target))
 	var wg sync.WaitGroup
 
 	for i, t := range target {
 		wg.Add(1)
-		go binarySearch(arr, t, i, results, &wg)
+		go func(i, t int) {
+			defer wg.Done()
+			results[i] = binarySearch(arr, t)
+		}(i, t)
 	}
 
 	wg.Wait()
-	close(results)
-
-	resultMap := make(map[int]int)
-	for result := range results {
-		resultMap[result.Index] = result.Value
-	}
 
 	for i, t := range target {
-		result := resultMap[i]
+		result := results[i]
 		if result != -1 {
 			fmt.Printf("Элемент %d найден на позиции %d\n", t, result)
 		} else {
